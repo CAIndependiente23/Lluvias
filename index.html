@@ -101,6 +101,11 @@ const URL = "https://docs.google.com/spreadsheets/d/1hbBJExZ_a0fFi8kTyKVNK_sZOy2
 let data = [];
 let filtro = { año: null, mes: null, fecha: null };
 
+const mesesNombre = [
+  "Ene","Feb","Mar","Abr","May","Jun",
+  "Jul","Ago","Sep","Oct","Nov","Dic"
+];
+
 Papa.parse(URL, {
   download: true,
   header: true,
@@ -133,11 +138,12 @@ function procesarFechas() {
   });
 }
 
+// ===== FILTROS =====
 function generarAños() {
   const cont = document.getElementById("años");
   cont.innerHTML = "<b>Año:</b> ";
 
-  const años = [...new Set(data.map(d => d._año).filter(Boolean))];
+  const años = [...new Set(data.map(d => d._año).filter(Boolean))].sort();
 
   const globalBtn = document.createElement("button");
   globalBtn.innerText = "GLOBAL";
@@ -154,6 +160,7 @@ function generarAños() {
     btn.onclick = () => {
       filtro = { año: a, mes: null, fecha: null };
       generarMeses();
+      limpiarFechas();
       actualizar();
     };
     cont.appendChild(btn);
@@ -163,6 +170,44 @@ function generarAños() {
 function generarMeses() {
   const cont = document.getElementById("meses");
   cont.innerHTML = "<b>Mes:</b> ";
+
+  const meses = [...new Set(
+    data.filter(d => d._año === filtro.año).map(d => d._mes)
+  )].sort((a,b)=>a-b);
+
+  meses.forEach(m => {
+    const btn = document.createElement("button");
+    btn.innerText = mesesNombre[m-1];
+    btn.onclick = () => {
+      filtro.mes = m;
+      filtro.fecha = null;
+      generarFechas();
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarFechas() {
+  const cont = document.getElementById("fechas");
+  cont.innerHTML = "<b>Fecha:</b> ";
+
+  const fechas = [...new Set(
+    data.filter(d =>
+      d._año === filtro.año &&
+      d._mes === filtro.mes
+    ).map(d => d._fecha)
+  )].sort();
+
+  fechas.forEach(f => {
+    const btn = document.createElement("button");
+    btn.innerText = f;
+    btn.onclick = () => {
+      filtro.fecha = f;
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
 }
 
 function limpiarNiveles() {
@@ -170,9 +215,15 @@ function limpiarNiveles() {
   document.getElementById("fechas").innerHTML = "";
 }
 
+function limpiarFechas() {
+  document.getElementById("fechas").innerHTML = "";
+}
+
 function getFiltrado() {
   return data.filter(d => {
-    return (!filtro.año || d._año === filtro.año);
+    return (!filtro.año || d._año === filtro.año) &&
+           (!filtro.mes || d._mes === filtro.mes) &&
+           (!filtro.fecha || d._fecha === filtro.fecha);
   });
 }
 
@@ -266,11 +317,17 @@ function renderTablaListado(datos) {
   const fZona = document.getElementById("fZona").value;
   const fComuna = document.getElementById("fComuna").value;
 
-  const filtrado = datos.filter(d =>
-    (!fEstado || d.ESTADO === fEstado) &&
-    (!fZona || d.ZONA === fZona) &&
-    (!fComuna || d.COMUNA === fComuna)
-  );
+  const filtrado = datos
+    .filter(d =>
+      (!fEstado || d.ESTADO === fEstado) &&
+      (!fZona || d.ZONA === fZona) &&
+      (!fComuna || d.COMUNA === fComuna)
+    )
+    .sort((a,b) => {
+      const fa = new Date(a.FECHA + " " + (a["HORA DE INGRESO"] || "00:00"));
+      const fb = new Date(b.FECHA + " " + (b["HORA DE INGRESO"] || "00:00"));
+      return fb - fa;
+    });
 
   let html = "<tr><th>FECHA</th><th>HORA</th><th>ORIGEN</th><th>N AVISO</th><th>CALLE</th><th>ALTURA</th><th>INTERSECCIÓN</th><th>COMUNA</th><th>ZONA</th><th>ESTADO</th></tr>";
 
