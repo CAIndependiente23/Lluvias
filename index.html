@@ -1,1 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Ingresos</title>
 
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+
+<style>
+body { font-family: Arial; margin: 20px; }
+
+button {
+  margin: 3px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.active {
+  background-color: #007bff;
+  color: white;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+}
+
+h2 { margin-top: 30px; }
+</style>
+</head>
+
+<body>
+
+<h1>Dashboard</h1>
+
+<div id="filtros"></div>
+
+<h2>Tabla 1: Ingresos y Resueltos por Comuna</h2>
+<table id="tablaComuna"></table>
+
+<h2>Tabla 2: Ingresos por Origen</h2>
+<table id="tablaOrigen"></table>
+
+<script>
+
+// 🔴 PEGAR ACÁ TU CSV PUBLICADO
+const URL = "PEGAR_LINK_CSV_AQUI";
+
+let data = [];
+let filtro = { año: null, mes: null, fecha: null };
+
+Papa.parse(URL, {
+  download: true,
+  header: true,
+  complete: function(results) {
+    data = results.data;
+    procesarFechas();
+  }
+});
+
+// ===== PROCESAR FECHAS =====
+function procesarFechas() {
+  data.forEach(d => {
+    if (!d.Fecha) return;
+
+    const fecha = new Date(d.Fecha);
+    d.año = fecha.getFullYear();
+    d.mes = fecha.getMonth() + 1;
+    d.fecha = fecha.toISOString().split("T")[0];
+  });
+
+  generarBotones();
+}
+
+// ===== GENERAR BOTONES =====
+function generarBotones() {
+  const cont = document.getElementById("filtros");
+  cont.innerHTML = "";
+
+  const años = [...new Set(data.map(d => d.año))];
+
+  años.forEach(a => {
+    const btn = document.createElement("button");
+    btn.innerText = a;
+    btn.onclick = () => {
+      filtro = { año: a, mes: null, fecha: null };
+      generarMeses();
+      actualizarTablas();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarMeses() {
+  const cont = document.getElementById("filtros");
+
+  const meses = [...new Set(
+    data.filter(d => d.año === filtro.año).map(d => d.mes)
+  )];
+
+  meses.forEach(m => {
+    const btn = document.createElement("button");
+    btn.innerText = "Mes " + m;
+    btn.onclick = () => {
+      filtro.mes = m;
+      filtro.fecha = null;
+      generarFechas();
+      actualizarTablas();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarFechas() {
+  const cont = document.getElementById("filtros");
+
+  const fechas = [...new Set(
+    data.filter(d =>
+      d.año === filtro.año &&
+      d.mes === filtro.mes
+    ).map(d => d.fecha)
+  )];
+
+  fechas.forEach(f => {
+    const btn = document.createElement("button");
+    btn.innerText = f;
+    btn.onclick = () => {
+      filtro.fecha = f;
+      actualizarTablas();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+// ===== FILTRAR DATA =====
+function getFiltrado() {
+  return data.filter(d => {
+    return (!filtro.año || d.año === filtro.año) &&
+           (!filtro.mes || d.mes === filtro.mes) &&
+           (!filtro.fecha || d.fecha === filtro.fecha);
+  });
+}
+
+// ===== TABLA 1 =====
+function tablaComuna(datos) {
+  const tabla = document.getElementById("tablaComuna");
+  tabla.innerHTML = "";
+
+  let resumen = {};
+
+  datos.forEach(d => {
+    const comuna = d["Comuna"]; // ⚠️ CAMBIAR si el nombre es distinto
+    const estado = d["Estado"]; // ⚠️ CAMBIAR si corresponde
+
+    if (!resumen[comuna]) {
+      resumen[comuna] = { ingresos: 0, resueltos: 0 };
+    }
+
+    resumen[comuna].ingresos++;
+
+    if (estado === "RESUELTO") {
+      resumen[comuna].resueltos++;
+    }
+  });
+
+  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th></tr>";
+
+  for (let c in resumen) {
+    html += `<tr>
+      <td>${c}</td>
+      <td>${resumen[c].ingresos}</td>
+      <td>${resumen[c].resueltos}</td>
+    </tr>`;
+  }
+
+  tabla.innerHTML = html;
+}
+
+// ===== TABLA 2 =====
+function tablaOrigen(datos) {
+  const tabla = document.getElementById("tablaOrigen");
+  tabla.innerHTML = "";
+
+  let resumen = {};
+
+  datos.forEach(d => {
+    const origen = d["Origen"]; // ⚠️ CAMBIAR si el nombre es distinto
+
+    if (!resumen[origen]) resumen[origen] = 0;
+    resumen[origen]++;
+  });
+
+  let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
+
+  for (let o in resumen) {
+    html += `<tr>
+      <td>${o}</td>
+      <td>${resumen[o]}</td>
+    </tr>`;
+  }
+
+  tabla.innerHTML = html;
+}
+
+// ===== ACTUALIZAR =====
+function actualizarTablas() {
+  const filtrado = getFiltrado();
+  tablaComuna(filtrado);
+  tablaOrigen(filtrado);
+}
+
+</script>
+
+</body>
+</html>
