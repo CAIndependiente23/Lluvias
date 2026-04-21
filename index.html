@@ -16,7 +16,6 @@ body {
 h1 { text-align: center; }
 h2 { margin-top: 30px; }
 
-/* BOTONES */
 button {
   margin: 4px;
   padding: 8px 14px;
@@ -25,19 +24,10 @@ button {
   background: #e0e0e0;
   cursor: pointer;
   font-weight: bold;
-  transition: 0.2s;
 }
 
-button:hover {
-  background: #cfcfcf;
-  transform: translateY(-1px);
-}
+button:hover { background: #cfcfcf; }
 
-button:active {
-  transform: scale(0.95);
-}
-
-/* CONTENEDORES */
 .seccion {
   margin-top: 10px;
   padding: 10px;
@@ -45,7 +35,6 @@ button:active {
   border-radius: 10px;
 }
 
-/* TABLAS */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -53,7 +42,6 @@ table {
   background: white;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0px 3px 10px rgba(0,0,0,0.1);
 }
 
 th {
@@ -68,8 +56,11 @@ td {
 }
 
 tr:nth-child(even) { background: #f2f2f2; }
-tr:hover { background: #e6f0ff; }
 
+.copiar-btn {
+  background: #28a745;
+  color: white;
+}
 </style>
 </head>
 
@@ -84,10 +75,24 @@ tr:hover { background: #e6f0ff; }
 </div>
 
 <h2>Ingresos y Resueltos por Comuna</h2>
+<button class="copiar-btn" onclick="copiarTabla('tablaComuna')">Copiar</button>
 <table id="tablaComuna"></table>
 
 <h2>Ingresos por Origen</h2>
+<button class="copiar-btn" onclick="copiarTabla('tablaOrigen')">Copiar</button>
 <table id="tablaOrigen"></table>
+
+<h2>Listado de Avisos</h2>
+
+<div class="seccion">
+  <b>Filtros:</b><br>
+  Estado: <select id="fEstado" onchange="actualizar()"></select>
+  Zona: <select id="fZona" onchange="actualizar()"></select>
+  Comuna: <select id="fComuna" onchange="actualizar()"></select>
+</div>
+
+<button class="copiar-btn" onclick="copiarTabla('tablaListado')">Copiar Listado</button>
+<table id="tablaListado"></table>
 
 <script>
 
@@ -95,11 +100,6 @@ const URL = "https://docs.google.com/spreadsheets/d/1hbBJExZ_a0fFi8kTyKVNK_sZOy2
 
 let data = [];
 let filtro = { año: null, mes: null, fecha: null };
-
-const mesesNombre = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-];
 
 Papa.parse(URL, {
   download: true,
@@ -109,18 +109,17 @@ Papa.parse(URL, {
     data = results.data;
     procesarFechas();
     generarAños();
+    generarFiltrosListado();
     actualizar();
   }
 });
 
 function parseFecha(str) {
   if (!str) return null;
-
   if (str.includes("/")) {
     const [d,m,y] = str.split("/");
     return new Date(y, m-1, d);
   }
-
   return new Date(str);
 }
 
@@ -128,7 +127,6 @@ function procesarFechas() {
   data.forEach(d => {
     const f = parseFecha(d.FECHA);
     if (!f || isNaN(f)) return;
-
     d._año = f.getFullYear();
     d._mes = f.getMonth() + 1;
     d._fecha = f.toISOString().split("T")[0];
@@ -139,7 +137,7 @@ function generarAños() {
   const cont = document.getElementById("años");
   cont.innerHTML = "<b>Año:</b> ";
 
-  const años = [...new Set(data.map(d => d._año).filter(Boolean))].sort((a,b)=>a-b);
+  const años = [...new Set(data.map(d => d._año).filter(Boolean))];
 
   const globalBtn = document.createElement("button");
   globalBtn.innerText = "GLOBAL";
@@ -156,7 +154,6 @@ function generarAños() {
     btn.onclick = () => {
       filtro = { año: a, mes: null, fecha: null };
       generarMeses();
-      limpiarFechas();
       actualizar();
     };
     cont.appendChild(btn);
@@ -166,44 +163,6 @@ function generarAños() {
 function generarMeses() {
   const cont = document.getElementById("meses");
   cont.innerHTML = "<b>Mes:</b> ";
-
-  const meses = [...new Set(
-    data.filter(d => d._año === filtro.año).map(d => d._mes)
-  )].sort((a,b)=>a-b);
-
-  meses.forEach(m => {
-    const btn = document.createElement("button");
-    btn.innerText = mesesNombre[m-1];
-    btn.onclick = () => {
-      filtro.mes = m;
-      filtro.fecha = null;
-      generarFechas();
-      actualizar();
-    };
-    cont.appendChild(btn);
-  });
-}
-
-function generarFechas() {
-  const cont = document.getElementById("fechas");
-  cont.innerHTML = "<b>Fecha:</b> ";
-
-  const fechas = [...new Set(
-    data.filter(d =>
-      d._año === filtro.año &&
-      d._mes === filtro.mes
-    ).map(d => d._fecha)
-  )].sort();
-
-  fechas.forEach(f => {
-    const btn = document.createElement("button");
-    btn.innerText = f;
-    btn.onclick = () => {
-      filtro.fecha = f;
-      actualizar();
-    };
-    cont.appendChild(btn);
-  });
 }
 
 function limpiarNiveles() {
@@ -211,16 +170,27 @@ function limpiarNiveles() {
   document.getElementById("fechas").innerHTML = "";
 }
 
-function limpiarFechas() {
-  document.getElementById("fechas").innerHTML = "";
-}
-
 function getFiltrado() {
   return data.filter(d => {
-    return (!filtro.año || d._año === filtro.año) &&
-           (!filtro.mes || d._mes === filtro.mes) &&
-           (!filtro.fecha || d._fecha === filtro.fecha);
+    return (!filtro.año || d._año === filtro.año);
   });
+}
+
+// ===== COPIAR =====
+function copiarTabla(id) {
+  const tabla = document.getElementById(id);
+  let texto = "";
+
+  for (let row of tabla.rows) {
+    let fila = [];
+    for (let cell of row.cells) {
+      fila.push(cell.innerText);
+    }
+    texto += fila.join("\t") + "\n";
+  }
+
+  navigator.clipboard.writeText(texto);
+  alert("Copiado!");
 }
 
 // ===== TABLA COMUNA =====
@@ -228,36 +198,29 @@ function tablaComuna(datos) {
   let resumen = {};
 
   datos.forEach(d => {
-    const comuna = d.COMUNA || "SIN DATO";
+    const c = d.COMUNA || "SIN DATO";
     const estado = (d.ESTADO || "").toUpperCase();
 
-    if (!resumen[comuna]) {
-      resumen[comuna] = { ingresos: 0, resueltos: 0 };
-    }
+    if (!resumen[c]) resumen[c] = { i:0, r:0 };
 
-    resumen[comuna].ingresos++;
-
-    if (estado.includes("RESUELTO")) {
-      resumen[comuna].resueltos++;
-    }
+    resumen[c].i++;
+    if (estado.includes("RESUELTO")) resumen[c].r++;
   });
 
   let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
 
-  Object.keys(resumen).sort().forEach(c => {
-    const ing = resumen[c].ingresos;
-    const res = resumen[c].resueltos;
-    const pen = ing - res;
-
+  Object.keys(resumen).forEach(c => {
+    let ing = resumen[c].i;
+    let res = resumen[c].r;
     html += `<tr>
       <td>${c}</td>
       <td>${ing}</td>
       <td>${res}</td>
-      <td>${pen}</td>
+      <td>${ing-res}</td>
     </tr>`;
   });
 
-  document.getElementById("tablaComuna").innerHTML = html;
+  tablaComuna.innerHTML = html;
 }
 
 // ===== TABLA ORIGEN =====
@@ -265,27 +228,75 @@ function tablaOrigen(datos) {
   let resumen = {};
 
   datos.forEach(d => {
-    const origen = d.ORIGEN || "SIN DATO";
-    if (!resumen[origen]) resumen[origen] = 0;
-    resumen[origen]++;
+    const o = d.ORIGEN || "SIN DATO";
+    if (!resumen[o]) resumen[o]=0;
+    resumen[o]++;
   });
 
   let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
 
-  Object.keys(resumen).sort().forEach(o => {
+  Object.keys(resumen).forEach(o => {
+    html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
+  });
+
+  tablaOrigen.innerHTML = html;
+}
+
+// ===== FILTROS LISTADO =====
+function generarFiltrosListado() {
+  generarSelect("fEstado", "ESTADO");
+  generarSelect("fZona", "ZONA");
+  generarSelect("fComuna", "COMUNA");
+}
+
+function generarSelect(id, campo) {
+  const sel = document.getElementById(id);
+  const valores = [...new Set(data.map(d => d[campo]).filter(Boolean))];
+
+  sel.innerHTML = "<option value=''>Todos</option>";
+  valores.forEach(v => {
+    sel.innerHTML += `<option value="${v}">${v}</option>`;
+  });
+}
+
+// ===== TABLA LISTADO =====
+function tablaListado(datos) {
+  const fEstado = document.getElementById("fEstado").value;
+  const fZona = document.getElementById("fZona").value;
+  const fComuna = document.getElementById("fComuna").value;
+
+  const filtrado = datos.filter(d =>
+    (!fEstado || d.ESTADO === fEstado) &&
+    (!fZona || d.ZONA === fZona) &&
+    (!fComuna || d.COMUNA === fComuna)
+  );
+
+  let html = "<tr><th>FECHA</th><th>HORA</th><th>ORIGEN</th><th>N AVISO</th><th>CALLE</th><th>ALTURA</th><th>INTERSECCIÓN</th><th>COMUNA</th><th>ZONA</th><th>ESTADO</th></tr>";
+
+  filtrado.forEach(d => {
     html += `<tr>
-      <td>${o}</td>
-      <td>${resumen[o]}</td>
+      <td>${d.FECHA||""}</td>
+      <td>${d["HORA DE INGRESO"]||""}</td>
+      <td>${d.ORIGEN||""}</td>
+      <td>${d["N DE AVISO"]||""}</td>
+      <td>${d.CALLE||""}</td>
+      <td>${d.ALTURA||""}</td>
+      <td>${d.INTERSECCIÓN||""}</td>
+      <td>${d.COMUNA||""}</td>
+      <td>${d.ZONA||""}</td>
+      <td>${d.ESTADO||""}</td>
     </tr>`;
   });
 
-  document.getElementById("tablaOrigen").innerHTML = html;
+  tablaListado.innerHTML = html;
 }
 
+// ===== ACTUALIZAR =====
 function actualizar() {
   const f = getFiltrado();
   tablaComuna(f);
   tablaOrigen(f);
+  tablaListado(f);
 }
 
 </script>
