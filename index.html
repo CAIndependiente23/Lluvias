@@ -15,11 +15,6 @@ button {
   cursor: pointer;
 }
 
-.active {
-  background-color: #007bff;
-  color: white;
-}
-
 table {
   border-collapse: collapse;
   margin-top: 10px;
@@ -48,41 +43,57 @@ h2 { margin-top: 30px; }
 
 <script>
 
-// 🔴 PEGAR ACÁ TU CSV PUBLICADO
+// 🔴 PEGÁ ACÁ TU LINK CSV PUBLICADO
 const URL = "PEGAR_LINK_CSV_AQUI";
 
 let data = [];
 let filtro = { año: null, mes: null, fecha: null };
 
+// ===== PARSE CSV =====
 Papa.parse(URL, {
   download: true,
   header: true,
+  skipEmptyLines: true,
   complete: function(results) {
     data = results.data;
     procesarFechas();
   }
 });
 
+// ===== PARSE FECHA (ARGENTINA) =====
+function parseFecha(fechaStr) {
+  if (!fechaStr) return null;
+
+  // formato dd/mm/yyyy
+  if (fechaStr.includes("/")) {
+    const [d, m, y] = fechaStr.split("/");
+    return new Date(y, m - 1, d);
+  }
+
+  // fallback
+  return new Date(fechaStr);
+}
+
 // ===== PROCESAR FECHAS =====
 function procesarFechas() {
   data.forEach(d => {
-    if (!d.Fecha) return;
+    const f = parseFecha(d.FECHA);
+    if (!f || isNaN(f)) return;
 
-    const fecha = new Date(d.Fecha);
-    d.año = fecha.getFullYear();
-    d.mes = fecha.getMonth() + 1;
-    d.fecha = fecha.toISOString().split("T")[0];
+    d._año = f.getFullYear();
+    d._mes = f.getMonth() + 1;
+    d._fecha = f.toISOString().split("T")[0];
   });
 
-  generarBotones();
+  generarAños();
 }
 
-// ===== GENERAR BOTONES =====
-function generarBotones() {
+// ===== BOTONES =====
+function generarAños() {
   const cont = document.getElementById("filtros");
-  cont.innerHTML = "";
+  cont.innerHTML = "<b>Año:</b> ";
 
-  const años = [...new Set(data.map(d => d.año))];
+  const años = [...new Set(data.map(d => d._año).filter(Boolean))];
 
   años.forEach(a => {
     const btn = document.createElement("button");
@@ -90,7 +101,7 @@ function generarBotones() {
     btn.onclick = () => {
       filtro = { año: a, mes: null, fecha: null };
       generarMeses();
-      actualizarTablas();
+      actualizar();
     };
     cont.appendChild(btn);
   });
@@ -100,17 +111,19 @@ function generarMeses() {
   const cont = document.getElementById("filtros");
 
   const meses = [...new Set(
-    data.filter(d => d.año === filtro.año).map(d => d.mes)
+    data.filter(d => d._año === filtro.año).map(d => d._mes)
   )];
+
+  cont.innerHTML += "<br><b>Mes:</b> ";
 
   meses.forEach(m => {
     const btn = document.createElement("button");
-    btn.innerText = "Mes " + m;
+    btn.innerText = m;
     btn.onclick = () => {
       filtro.mes = m;
       filtro.fecha = null;
       generarFechas();
-      actualizarTablas();
+      actualizar();
     };
     cont.appendChild(btn);
   });
@@ -121,41 +134,40 @@ function generarFechas() {
 
   const fechas = [...new Set(
     data.filter(d =>
-      d.año === filtro.año &&
-      d.mes === filtro.mes
-    ).map(d => d.fecha)
+      d._año === filtro.año &&
+      d._mes === filtro.mes
+    ).map(d => d._fecha)
   )];
+
+  cont.innerHTML += "<br><b>Fecha:</b> ";
 
   fechas.forEach(f => {
     const btn = document.createElement("button");
     btn.innerText = f;
     btn.onclick = () => {
       filtro.fecha = f;
-      actualizarTablas();
+      actualizar();
     };
     cont.appendChild(btn);
   });
 }
 
-// ===== FILTRAR DATA =====
+// ===== FILTRO =====
 function getFiltrado() {
   return data.filter(d => {
-    return (!filtro.año || d.año === filtro.año) &&
-           (!filtro.mes || d.mes === filtro.mes) &&
-           (!filtro.fecha || d.fecha === filtro.fecha);
+    return (!filtro.año || d._año === filtro.año) &&
+           (!filtro.mes || d._mes === filtro.mes) &&
+           (!filtro.fecha || d._fecha === filtro.fecha);
   });
 }
 
-// ===== TABLA 1 =====
+// ===== TABLA COMUNA =====
 function tablaComuna(datos) {
-  const tabla = document.getElementById("tablaComuna");
-  tabla.innerHTML = "";
-
   let resumen = {};
 
   datos.forEach(d => {
-    const comuna = d["Comuna"]; // ⚠️ CAMBIAR si el nombre es distinto
-    const estado = d["Estado"]; // ⚠️ CAMBIAR si corresponde
+    const comuna = d.COMUNA || "SIN DATO";
+    const estado = (d.ESTADO || "").toUpperCase();
 
     if (!resumen[comuna]) {
       resumen[comuna] = { ingresos: 0, resueltos: 0 };
@@ -163,7 +175,7 @@ function tablaComuna(datos) {
 
     resumen[comuna].ingresos++;
 
-    if (estado === "RESUELTO") {
+    if (estado.includes("RESUELTO")) {
       resumen[comuna].resueltos++;
     }
   });
@@ -178,18 +190,15 @@ function tablaComuna(datos) {
     </tr>`;
   }
 
-  tabla.innerHTML = html;
+  document.getElementById("tablaComuna").innerHTML = html;
 }
 
-// ===== TABLA 2 =====
+// ===== TABLA ORIGEN =====
 function tablaOrigen(datos) {
-  const tabla = document.getElementById("tablaOrigen");
-  tabla.innerHTML = "";
-
   let resumen = {};
 
   datos.forEach(d => {
-    const origen = d["Origen"]; // ⚠️ CAMBIAR si el nombre es distinto
+    const origen = d.ORIGEN || "SIN DATO";
 
     if (!resumen[origen]) resumen[origen] = 0;
     resumen[origen]++;
@@ -204,14 +213,14 @@ function tablaOrigen(datos) {
     </tr>`;
   }
 
-  tabla.innerHTML = html;
+  document.getElementById("tablaOrigen").innerHTML = html;
 }
 
-// ===== ACTUALIZAR =====
-function actualizarTablas() {
-  const filtrado = getFiltrado();
-  tablaComuna(filtrado);
-  tablaOrigen(filtrado);
+// ===== UPDATE =====
+function actualizar() {
+  const f = getFiltrado();
+  tablaComuna(f);
+  tablaOrigen(f);
 }
 
 </script>
