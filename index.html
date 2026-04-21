@@ -7,33 +7,25 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
 <style>
-
-/* ===== FONDO ===== */
 body {
   font-family: Arial;
   margin: 20px;
-  background: #fff8cc; /* amarillo suave */
+  background: #fff8cc;
 }
 
-/* ===== TITULOS ===== */
-h1 {
-  text-align: center;
-}
+h1 { text-align: center; }
+h2 { margin-top: 30px; }
 
-h2 {
-  margin-top: 30px;
-}
-
-/* ===== BOTONES ===== */
+/* BOTONES */
 button {
   margin: 4px;
   padding: 8px 14px;
-  cursor: pointer;
   border: none;
   border-radius: 8px;
   background: #e0e0e0;
-  transition: all 0.2s ease;
+  cursor: pointer;
   font-weight: bold;
+  transition: 0.2s;
 }
 
 button:hover {
@@ -45,12 +37,7 @@ button:active {
   transform: scale(0.95);
 }
 
-.active {
-  background-color: #007bff;
-  color: white;
-}
-
-/* ===== CONTENEDORES ===== */
+/* CONTENEDORES */
 .seccion {
   margin-top: 10px;
   padding: 10px;
@@ -58,11 +45,11 @@ button:active {
   border-radius: 10px;
 }
 
-/* ===== TABLAS ===== */
+/* TABLAS */
 table {
+  width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
-  width: 100%;
   background: white;
   border-radius: 10px;
   overflow: hidden;
@@ -77,18 +64,11 @@ th {
 
 td {
   padding: 8px;
-  text-align: center; /* 👈 centrado */
+  text-align: center;
 }
 
-/* filas alternadas */
-tr:nth-child(even) {
-  background: #f2f2f2;
-}
-
-/* hover fila */
-tr:hover {
-  background: #e6f0ff;
-}
+tr:nth-child(even) { background: #f2f2f2; }
+tr:hover { background: #e6f0ff; }
 
 </style>
 </head>
@@ -243,6 +223,7 @@ function getFiltrado() {
   });
 }
 
+// ===== TABLA COMUNA =====
 function tablaComuna(datos) {
   let resumen = {};
 
@@ -261,19 +242,25 @@ function tablaComuna(datos) {
     }
   });
 
-  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th></tr>";
+  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
 
   Object.keys(resumen).sort().forEach(c => {
+    const ing = resumen[c].ingresos;
+    const res = resumen[c].resueltos;
+    const pen = ing - res;
+
     html += `<tr>
       <td>${c}</td>
-      <td>${resumen[c].ingresos}</td>
-      <td>${resumen[c].resueltos}</td>
+      <td>${ing}</td>
+      <td>${res}</td>
+      <td>${pen}</td>
     </tr>`;
   });
 
   document.getElementById("tablaComuna").innerHTML = html;
 }
 
+// ===== TABLA ORIGEN =====
 function tablaOrigen(datos) {
   let resumen = {};
 
