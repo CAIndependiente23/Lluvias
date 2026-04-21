@@ -7,18 +7,42 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
 <style>
-body { font-family: Arial; margin: 20px; }
 
+/* ===== FONDO ===== */
+body {
+  font-family: Arial;
+  margin: 20px;
+  background: #fff8cc; /* amarillo suave */
+}
+
+/* ===== TITULOS ===== */
+h1 {
+  text-align: center;
+}
+
+h2 {
+  margin-top: 30px;
+}
+
+/* ===== BOTONES ===== */
 button {
-  margin: 3px;
-  padding: 6px 10px;
+  margin: 4px;
+  padding: 8px 14px;
   cursor: pointer;
-  border: 1px solid #ccc;
-  background: #f5f5f5;
+  border: none;
+  border-radius: 8px;
+  background: #e0e0e0;
+  transition: all 0.2s ease;
+  font-weight: bold;
 }
 
 button:hover {
-  background: #ddd;
+  background: #cfcfcf;
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: scale(0.95);
 }
 
 .active {
@@ -26,21 +50,46 @@ button:hover {
   color: white;
 }
 
+/* ===== CONTENEDORES ===== */
 .seccion {
   margin-top: 10px;
+  padding: 10px;
+  background: #ffffffaa;
+  border-radius: 10px;
 }
 
+/* ===== TABLAS ===== */
 table {
   border-collapse: collapse;
   margin-top: 10px;
+  width: 100%;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0px 3px 10px rgba(0,0,0,0.1);
 }
 
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px 12px;
+th {
+  background: #007bff;
+  color: white;
+  padding: 10px;
 }
 
-h2 { margin-top: 30px; }
+td {
+  padding: 8px;
+  text-align: center; /* 👈 centrado */
+}
+
+/* filas alternadas */
+tr:nth-child(even) {
+  background: #f2f2f2;
+}
+
+/* hover fila */
+tr:hover {
+  background: #e6f0ff;
+}
+
 </style>
 </head>
 
@@ -72,7 +121,6 @@ const mesesNombre = [
   "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
 ];
 
-// ===== PARSE CSV =====
 Papa.parse(URL, {
   download: true,
   header: true,
@@ -85,7 +133,6 @@ Papa.parse(URL, {
   }
 });
 
-// ===== PARSE FECHA =====
 function parseFecha(str) {
   if (!str) return null;
 
@@ -97,7 +144,6 @@ function parseFecha(str) {
   return new Date(str);
 }
 
-// ===== PROCESAR =====
 function procesarFechas() {
   data.forEach(d => {
     const f = parseFecha(d.FECHA);
@@ -109,14 +155,12 @@ function procesarFechas() {
   });
 }
 
-// ===== AÑOS =====
 function generarAños() {
   const cont = document.getElementById("años");
   cont.innerHTML = "<b>Año:</b> ";
 
   const años = [...new Set(data.map(d => d._año).filter(Boolean))].sort((a,b)=>a-b);
 
-  // botón global
   const globalBtn = document.createElement("button");
   globalBtn.innerText = "GLOBAL";
   globalBtn.onclick = () => {
@@ -139,7 +183,6 @@ function generarAños() {
   });
 }
 
-// ===== MESES =====
 function generarMeses() {
   const cont = document.getElementById("meses");
   cont.innerHTML = "<b>Mes:</b> ";
@@ -161,7 +204,6 @@ function generarMeses() {
   });
 }
 
-// ===== FECHAS =====
 function generarFechas() {
   const cont = document.getElementById("fechas");
   cont.innerHTML = "<b>Fecha:</b> ";
@@ -184,7 +226,6 @@ function generarFechas() {
   });
 }
 
-// ===== LIMPIEZA =====
 function limpiarNiveles() {
   document.getElementById("meses").innerHTML = "";
   document.getElementById("fechas").innerHTML = "";
@@ -194,7 +235,6 @@ function limpiarFechas() {
   document.getElementById("fechas").innerHTML = "";
 }
 
-// ===== FILTRO =====
 function getFiltrado() {
   return data.filter(d => {
     return (!filtro.año || d._año === filtro.año) &&
@@ -203,7 +243,6 @@ function getFiltrado() {
   });
 }
 
-// ===== TABLA COMUNA =====
 function tablaComuna(datos) {
   let resumen = {};
 
@@ -235,7 +274,6 @@ function tablaComuna(datos) {
   document.getElementById("tablaComuna").innerHTML = html;
 }
 
-// ===== TABLA ORIGEN =====
 function tablaOrigen(datos) {
   let resumen = {};
 
@@ -257,7 +295,6 @@ function tablaOrigen(datos) {
   document.getElementById("tablaOrigen").innerHTML = html;
 }
 
-// ===== UPDATE =====
 function actualizar() {
   const f = getFiltrado();
   tablaComuna(f);
