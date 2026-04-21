@@ -190,11 +190,11 @@ function copiarTabla(id) {
   }
 
   navigator.clipboard.writeText(texto);
-  alert("Copiado!");
+  alert("Copiado al portapapeles");
 }
 
 // ===== TABLA COMUNA =====
-function tablaComuna(datos) {
+function renderTablaComuna(datos) {
   let resumen = {};
 
   datos.forEach(d => {
@@ -209,9 +209,10 @@ function tablaComuna(datos) {
 
   let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
 
-  Object.keys(resumen).forEach(c => {
+  Object.keys(resumen).sort().forEach(c => {
     let ing = resumen[c].i;
     let res = resumen[c].r;
+
     html += `<tr>
       <td>${c}</td>
       <td>${ing}</td>
@@ -220,11 +221,11 @@ function tablaComuna(datos) {
     </tr>`;
   });
 
-  tablaComuna.innerHTML = html;
+  document.getElementById("tablaComuna").innerHTML = html;
 }
 
 // ===== TABLA ORIGEN =====
-function tablaOrigen(datos) {
+function renderTablaOrigen(datos) {
   let resumen = {};
 
   datos.forEach(d => {
@@ -235,11 +236,11 @@ function tablaOrigen(datos) {
 
   let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
 
-  Object.keys(resumen).forEach(o => {
+  Object.keys(resumen).sort().forEach(o => {
     html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
   });
 
-  tablaOrigen.innerHTML = html;
+  document.getElementById("tablaOrigen").innerHTML = html;
 }
 
 // ===== FILTROS LISTADO =====
@@ -260,7 +261,7 @@ function generarSelect(id, campo) {
 }
 
 // ===== TABLA LISTADO =====
-function tablaListado(datos) {
+function renderTablaListado(datos) {
   const fEstado = document.getElementById("fEstado").value;
   const fZona = document.getElementById("fZona").value;
   const fComuna = document.getElementById("fComuna").value;
@@ -288,15 +289,15 @@ function tablaListado(datos) {
     </tr>`;
   });
 
-  tablaListado.innerHTML = html;
+  document.getElementById("tablaListado").innerHTML = html;
 }
 
 // ===== ACTUALIZAR =====
 function actualizar() {
   const f = getFiltrado();
-  tablaComuna(f);
-  tablaOrigen(f);
-  tablaListado(f);
+  renderTablaComuna(f);
+  renderTablaOrigen(f);
+  renderTablaListado(f);
 }
 
 </script>
