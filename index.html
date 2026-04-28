@@ -63,12 +63,18 @@ tr:nth-child(even) { background: #f2f2f2; }
   color: white;
 }
 
-/* ===== NUEVO: achicar tablas resumen ===== */
+/* ===== NUEVO: tablas más compactas SIN achicar texto ===== */
 .tabla-chica {
-  transform: scale(0.85);
-  transform-origin: top left;
-  width: 117%;
+  table-layout: fixed;
+  width: 85%;
 }
+
+.tabla-chica th,
+.tabla-chica td {
+  padding: 6px;
+  font-size: 14px;
+}
+
 </style>
 </head>
 
