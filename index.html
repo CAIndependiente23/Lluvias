@@ -201,20 +201,207 @@ function generarFiltrosListado() {
   comunas.forEach(c => fComuna.innerHTML += `<option value="${c}">${c}</option>`);
 }
 
-// ===== RESTO IGUAL =====
-// (no se modifica nada más)
+// ===== RESTO DE TU CÓDIGO (SIN CAMBIOS) =====
+function generarAños() {
+  const cont = document.getElementById("años");
+  cont.innerHTML = "<b>Año:</b> ";
 
-function generarAños() { /* igual */ }
-function generarMeses() { /* igual */ }
-function generarFechas() { /* igual */ }
-function limpiarNiveles() { /* igual */ }
-function limpiarFechas() { /* igual */ }
-function getFiltrado() { /* igual */ }
-function renderTablaComuna(datos) { /* igual */ }
-function renderTablaOrigen(datos) { /* igual */ }
-function renderTablaListado(datos) { /* igual */ }
-function cambiarPagina(pag) { /* igual */ }
-function actualizar() { /* igual */ }
+  const años = [...new Set(data.map(d => d._año).filter(Boolean))].sort();
+
+  const globalBtn = document.createElement("button");
+  globalBtn.innerText = "GLOBAL";
+  globalBtn.onclick = () => {
+    filtro = { año: null, mes: null, fecha: null };
+    limpiarNiveles();
+    actualizar();
+  };
+  cont.appendChild(globalBtn);
+
+  años.forEach(a => {
+    const btn = document.createElement("button");
+    btn.innerText = a;
+    btn.onclick = () => {
+      filtro = { año: a, mes: null, fecha: null };
+      generarMeses();
+      limpiarFechas();
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarMeses() {
+  const cont = document.getElementById("meses");
+  cont.innerHTML = "<b>Mes:</b> ";
+
+  const meses = [...new Set(
+    data.filter(d => d._año === filtro.año).map(d => d._mes)
+  )].sort((a,b)=>a-b);
+
+  meses.forEach(m => {
+    const btn = document.createElement("button");
+    btn.innerText = mesesNombre[m-1];
+    btn.onclick = () => {
+      filtro.mes = m;
+      filtro.fecha = null;
+      generarFechas();
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarFechas() {
+  const cont = document.getElementById("fechas");
+  cont.innerHTML = "<b>Fecha:</b> ";
+
+  const fechas = [...new Set(
+    data.filter(d =>
+      d._año === filtro.año &&
+      d._mes === filtro.mes
+    ).map(d => d._fecha)
+  )].sort();
+
+  fechas.forEach(f => {
+    const btn = document.createElement("button");
+    btn.innerText = f;
+    btn.onclick = () => {
+      filtro.fecha = f;
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function limpiarNiveles() {
+  document.getElementById("meses").innerHTML = "";
+  document.getElementById("fechas").innerHTML = "";
+}
+
+function limpiarFechas() {
+  document.getElementById("fechas").innerHTML = "";
+}
+
+function getFiltrado() {
+  return data.filter(d => {
+    return (!filtro.año || d._año === filtro.año) &&
+           (!filtro.mes || d._mes === filtro.mes) &&
+           (!filtro.fecha || d._fecha === filtro.fecha);
+  });
+}
+
+function renderTablaComuna(datos) {
+  let resumen = {};
+
+  datos.forEach(d => {
+    const c = d.COMUNA || "SIN DATO";
+    const estado = (d.ESTADO || "").toUpperCase();
+
+    if (!resumen[c]) resumen[c] = { i:0, r:0 };
+
+    resumen[c].i++;
+    if (estado.includes("RESUELTO")) resumen[c].r++;
+  });
+
+  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
+
+  Object.keys(resumen).sort().forEach(c => {
+    let ing = resumen[c].i;
+    let res = resumen[c].r;
+
+    html += `<tr>
+      <td>${c}</td>
+      <td>${ing}</td>
+      <td>${res}</td>
+      <td>${ing-res}</td>
+    </tr>`;
+  });
+
+  document.getElementById("tablaComuna").innerHTML = html;
+}
+
+function renderTablaOrigen(datos) {
+  let resumen = {};
+
+  datos.forEach(d => {
+    const o = d.ORIGEN || "SIN DATO";
+    if (!resumen[o]) resumen[o]=0;
+    resumen[o]++;
+  });
+
+  let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
+
+  Object.keys(resumen).sort().forEach(o => {
+    html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
+  });
+
+  document.getElementById("tablaOrigen").innerHTML = html;
+}
+
+function renderTablaListado(datos) {
+  const fEstado = document.getElementById("fEstado").value;
+  const fZona = document.getElementById("fZona").value;
+  const fComuna = document.getElementById("fComuna").value;
+  const fCalle = document.getElementById("fCalle").value.toLowerCase();
+
+  const filtrado = datos
+    .filter(d =>
+      (!fEstado || d.ESTADO === fEstado) &&
+      (!fZona || d.ZONA === fZona) &&
+      (!fComuna || d.COMUNA === fComuna) &&
+      (!fCalle || (d.CALLE || "").toLowerCase().includes(fCalle))
+    )
+    .sort((a,b) => {
+      const fa = new Date(a.FECHA + " " + (a["HORA DE INGRESO"] || "00:00"));
+      const fb = new Date(b.FECHA + " " + (b["HORA DE INGRESO"] || "00:00"));
+      return fb - fa;
+    });
+
+  const totalPaginas = Math.ceil(filtrado.length / registrosPorPagina);
+  const inicio = (paginaActual - 1) * registrosPorPagina;
+  const paginaDatos = filtrado.slice(inicio, inicio + registrosPorPagina);
+
+  let html = "<tr><th>FECHA</th><th>HORA</th><th>ORIGEN</th><th>N AVISO</th><th>CALLE</th><th>ALTURA</th><th>INTERSECCIÓN</th><th>COMUNA</th><th>ZONA</th><th>ESTADO</th></tr>";
+
+  paginaDatos.forEach(d => {
+    html += `<tr>
+      <td>${d.FECHA||""}</td>
+      <td>${d["HORA DE INGRESO"]||""}</td>
+      <td>${d.ORIGEN||""}</td>
+      <td>${d["N DE AVISO"]||""}</td>
+      <td>${d.CALLE||""}</td>
+      <td>${d.ALTURA||""}</td>
+      <td>${d.INTERSECCIÓN||""}</td>
+      <td>${d.COMUNA||""}</td>
+      <td>${d.ZONA||""}</td>
+      <td>${d.ESTADO||""}</td>
+    </tr>`;
+  });
+
+  document.getElementById("tablaListado").innerHTML = html;
+
+  document.getElementById("paginacion").innerHTML = `
+    <button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual === 1 ? "disabled" : ""}>◀ Anterior</button>
+    Página ${paginaActual} de ${totalPaginas || 1}
+    <button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual === totalPaginas ? "disabled" : ""}>Siguiente ▶</button>
+  `;
+}
+
+function cambiarPagina(pag) {
+  paginaActual = pag;
+  const f = getFiltrado();
+  renderTablaComuna(f);
+  renderTablaOrigen(f);
+  renderTablaListado(f);
+}
+
+function actualizar() {
+  paginaActual = 1;
+  const f = getFiltrado();
+  renderTablaComuna(f);
+  renderTablaOrigen(f);
+  renderTablaListado(f);
+}
 
 </script>
 
