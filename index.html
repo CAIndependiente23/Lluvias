@@ -261,6 +261,55 @@ async function copiarTablaImagen(id) {
   });
 }
 
+// ===== TABLAS =====
+function renderTablaComuna(datos) {
+  let resumen = {};
+
+  datos.forEach(d => {
+    const c = d.COMUNA || "SIN DATO";
+    const estado = (d.ESTADO || "").toUpperCase();
+
+    if (!resumen[c]) resumen[c] = { i:0, r:0 };
+
+    resumen[c].i++;
+    if (estado.includes("RESUELTO")) resumen[c].r++;
+  });
+
+  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
+
+  Object.keys(resumen).sort().forEach(c => {
+    let ing = resumen[c].i;
+    let res = resumen[c].r;
+
+    html += `<tr>
+      <td>${c}</td>
+      <td>${ing}</td>
+      <td>${res}</td>
+      <td>${ing-res}</td>
+    </tr>`;
+  });
+
+  document.getElementById("tablaComuna").innerHTML = html;
+}
+
+function renderTablaOrigen(datos) {
+  let resumen = {};
+
+  datos.forEach(d => {
+    const o = d.ORIGEN || "SIN DATO";
+    if (!resumen[o]) resumen[o]=0;
+    resumen[o]++;
+  });
+
+  let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
+
+  Object.keys(resumen).sort().forEach(o => {
+    html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
+  });
+
+  document.getElementById("tablaOrigen").innerHTML = html;
+}
+
 // ===== TABLA LISTADO =====
 function renderTablaListado(datos) {
   const fEstado = document.getElementById("fEstado").value;
