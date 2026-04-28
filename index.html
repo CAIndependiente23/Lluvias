@@ -8,36 +8,71 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
-body { font-family: Arial; margin: 20px; background: #fff8cc; }
+body {
+  font-family: Arial;
+  margin: 20px;
+  background: #fff8cc;
+}
+
 h1 { text-align: center; }
 h2 { margin-top: 30px; }
 
 button {
-  margin: 4px; padding: 8px 14px;
-  border: none; border-radius: 8px;
-  background: #e0e0e0; cursor: pointer;
+  margin: 4px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #e0e0e0;
+  cursor: pointer;
   font-weight: bold;
 }
+
 button:hover { background: #cfcfcf; }
 
 .seccion {
-  margin-top: 10px; padding: 10px;
-  background: #ffffffaa; border-radius: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #ffffffaa;
+  border-radius: 10px;
 }
 
 table {
-  width: 100%; border-collapse: collapse;
-  margin-top: 10px; background: white;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-th { background: #007bff; color: white; padding: 10px; }
-td { padding: 8px; text-align: center; }
+th {
+  background: #007bff;
+  color: white;
+  padding: 10px;
+}
+
+td {
+  padding: 8px;
+  text-align: center;
+}
+
 tr:nth-child(even) { background: #f2f2f2; }
 
-.copiar-btn { background: #28a745; color: white; }
+.copiar-btn {
+  background: #28a745;
+  color: white;
+}
 
 .tabla-chica {
-  width: 85%; margin: 0 auto;
+  table-layout: fixed;
+  width: 85%;
+  margin: 0 auto;
+}
+
+.tabla-chica th,
+.tabla-chica td {
+  padding: 6px;
+  font-size: 14px;
 }
 </style>
 </head>
@@ -63,15 +98,17 @@ tr:nth-child(even) { background: #f2f2f2; }
 <h2>Listado de Avisos</h2>
 
 <div class="seccion">
+  <b>Filtros:</b><br>
   Estado: <select id="fEstado" onchange="actualizar()"></select>
   Zona: <select id="fZona" onchange="actualizar()"></select>
   Comuna: <select id="fComuna" onchange="actualizar()"></select>
   <br><br>
-  Buscar calle: <input type="text" id="fCalle" oninput="actualizar()">
+  Buscar calle: <input type="text" id="fCalle" oninput="actualizar()" placeholder="Ej: Corrientes">
 </div>
 
 <button class="copiar-btn" onclick="copiarTablaImagen('tablaListado')">Copiar listado como imagen</button>
 <table id="tablaListado"></table>
+
 <div id="paginacion" style="text-align:center; margin-top:10px;"></div>
 
 <script>
@@ -81,8 +118,11 @@ const URL = "https://docs.google.com/spreadsheets/d/1hbBJExZ_a0fFi8kTyKVNK_sZOy2
 let data = [];
 let filtro = { año: null, mes: null, fecha: null };
 
+// PAGINACIÓN
 let paginaActual = 1;
 const registrosPorPagina = 50;
+
+const mesesNombre = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 Papa.parse(URL, {
   download: true,
@@ -97,6 +137,26 @@ Papa.parse(URL, {
   }
 });
 
+function parseFecha(str) {
+  if (!str) return null;
+  if (str.includes("/")) {
+    const [d,m,y] = str.split("/");
+    return new Date(y, m-1, d);
+  }
+  return new Date(str);
+}
+
+function procesarFechas() {
+  data.forEach(d => {
+    const f = parseFecha(d.FECHA);
+    if (!f || isNaN(f)) return;
+    d._año = f.getFullYear();
+    d._mes = f.getMonth() + 1;
+    d._fecha = f.toISOString().split("T")[0];
+  });
+}
+
+// ===== FILTROS LISTADO =====
 function generarFiltrosListado() {
   const estados = [...new Set(data.map(d => d.ESTADO).filter(Boolean))].sort();
   const zonas = [...new Set(data.map(d => d.ZONA).filter(Boolean))].sort();
@@ -115,65 +175,163 @@ function generarFiltrosListado() {
   comunas.forEach(c => fComuna.innerHTML += `<option value="${c}">${c}</option>`);
 }
 
-function procesarFechas() {
-  data.forEach(d => {
-    if (!d.FECHA) return;
-    const f = new Date(d.FECHA);
-    if (isNaN(f)) return;
-    d._año = f.getFullYear();
-    d._mes = f.getMonth() + 1;
-    d._fecha = f.toISOString().split("T")[0];
+// ===== RESTO ORIGINAL =====
+function generarAños() {
+  const cont = document.getElementById("años");
+  cont.innerHTML = "<b>Año:</b> ";
+
+  const años = [...new Set(data.map(d => d._año).filter(Boolean))].sort();
+
+  const globalBtn = document.createElement("button");
+  globalBtn.innerText = "GLOBAL";
+  globalBtn.onclick = () => {
+    filtro = { año: null, mes: null, fecha: null };
+    limpiarNiveles();
+    actualizar();
+  };
+  cont.appendChild(globalBtn);
+
+  años.forEach(a => {
+    const btn = document.createElement("button");
+    btn.innerText = a;
+    btn.onclick = () => {
+      filtro = { año: a, mes: null, fecha: null };
+      generarMeses();
+      limpiarFechas();
+      actualizar();
+    };
+    cont.appendChild(btn);
   });
+}
+
+function generarMeses() {
+  const cont = document.getElementById("meses");
+  cont.innerHTML = "<b>Mes:</b> ";
+
+  const meses = [...new Set(
+    data.filter(d => d._año === filtro.año).map(d => d._mes)
+  )].sort((a,b)=>a-b);
+
+  meses.forEach(m => {
+    const btn = document.createElement("button");
+    btn.innerText = mesesNombre[m-1];
+    btn.onclick = () => {
+      filtro.mes = m;
+      filtro.fecha = null;
+      generarFechas();
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function generarFechas() {
+  const cont = document.getElementById("fechas");
+  cont.innerHTML = "<b>Fecha:</b> ";
+
+  const fechas = [...new Set(
+    data.filter(d =>
+      d._año === filtro.año &&
+      d._mes === filtro.mes
+    ).map(d => d._fecha)
+  )].sort();
+
+  fechas.forEach(f => {
+    const btn = document.createElement("button");
+    btn.innerText = f;
+    btn.onclick = () => {
+      filtro.fecha = f;
+      actualizar();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+function limpiarNiveles() {
+  document.getElementById("meses").innerHTML = "";
+  document.getElementById("fechas").innerHTML = "";
+}
+
+function limpiarFechas() {
+  document.getElementById("fechas").innerHTML = "";
 }
 
 function getFiltrado() {
-  return data.filter(d =>
-    (!filtro.año || d._año === filtro.año) &&
-    (!filtro.mes || d._mes === filtro.mes) &&
-    (!filtro.fecha || d._fecha === filtro.fecha)
-  );
+  return data.filter(d => {
+    return (!filtro.año || d._año === filtro.año) &&
+           (!filtro.mes || d._mes === filtro.mes) &&
+           (!filtro.fecha || d._fecha === filtro.fecha);
+  });
 }
 
+// ===== TABLAS =====
 function renderTablaComuna(datos) {
-  let r = {};
-  datos.forEach(d=>{
-    let c=d.COMUNA||"SIN DATO";
-    if(!r[c]) r[c]={i:0,r:0};
-    r[c].i++;
-    if((d.ESTADO||"").includes("RESUELTO")) r[c].r++;
+  let resumen = {};
+
+  datos.forEach(d => {
+    const c = d.COMUNA || "SIN DATO";
+    const estado = (d.ESTADO || "").toUpperCase();
+
+    if (!resumen[c]) resumen[c] = { i:0, r:0 };
+
+    resumen[c].i++;
+    if (estado.includes("RESUELTO")) resumen[c].r++;
   });
-  let html="<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
-  Object.keys(r).forEach(c=>{
-    html+=`<tr><td>${c}</td><td>${r[c].i}</td><td>${r[c].r}</td><td>${r[c].i-r[c].r}</td></tr>`;
+
+  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
+
+  Object.keys(resumen).sort().forEach(c => {
+    let ing = resumen[c].i;
+    let res = resumen[c].r;
+
+    html += `<tr>
+      <td>${c}</td>
+      <td>${ing}</td>
+      <td>${res}</td>
+      <td>${ing-res}</td>
+    </tr>`;
   });
-  tablaComuna.innerHTML=html;
+
+  document.getElementById("tablaComuna").innerHTML = html;
 }
 
 function renderTablaOrigen(datos) {
-  let r={};
-  datos.forEach(d=>{
-    let o=d.ORIGEN||"SIN DATO";
-    r[o]=(r[o]||0)+1;
+  let resumen = {};
+
+  datos.forEach(d => {
+    const o = d.ORIGEN || "SIN DATO";
+    if (!resumen[o]) resumen[o]=0;
+    resumen[o]++;
   });
-  let html="<tr><th>Origen</th><th>Ingresos</th></tr>";
-  Object.keys(r).forEach(o=>{
-    html+=`<tr><td>${o}</td><td>${r[o]}</td></tr>`;
+
+  let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
+
+  Object.keys(resumen).sort().forEach(o => {
+    html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
   });
-  tablaOrigen.innerHTML=html;
+
+  document.getElementById("tablaOrigen").innerHTML = html;
 }
 
+// ===== LISTADO + PAGINACIÓN =====
 function renderTablaListado(datos) {
   const fEstado = document.getElementById("fEstado").value;
   const fZona = document.getElementById("fZona").value;
   const fComuna = document.getElementById("fComuna").value;
   const fCalle = document.getElementById("fCalle").value.toLowerCase();
 
-  const filtrado = datos.filter(d =>
-    (!fEstado || d.ESTADO === fEstado) &&
-    (!fZona || d.ZONA === fZona) &&
-    (!fComuna || d.COMUNA === fComuna) &&
-    (!fCalle || (d.CALLE || "").toLowerCase().includes(fCalle))
-  );
+  const filtrado = datos
+    .filter(d =>
+      (!fEstado || d.ESTADO === fEstado) &&
+      (!fZona || d.ZONA === fZona) &&
+      (!fComuna || d.COMUNA === fComuna) &&
+      (!fCalle || (d.CALLE || "").toLowerCase().includes(fCalle))
+    )
+    .sort((a,b) => {
+      const fa = new Date(a.FECHA + " " + (a["HORA DE INGRESO"] || "00:00"));
+      const fb = new Date(b.FECHA + " " + (b["HORA DE INGRESO"] || "00:00"));
+      return fb - fa;
+    });
 
   const totalPaginas = Math.ceil(filtrado.length / registrosPorPagina);
   const inicio = (paginaActual - 1) * registrosPorPagina;
@@ -181,8 +339,8 @@ function renderTablaListado(datos) {
 
   let html = "<tr><th>FECHA</th><th>HORA</th><th>ORIGEN</th><th>N AVISO</th><th>CALLE</th><th>ALTURA</th><th>INTERSECCIÓN</th><th>COMUNA</th><th>ZONA</th><th>ESTADO</th></tr>";
 
-  paginaDatos.forEach(d=>{
-    html+=`<tr>
+  paginaDatos.forEach(d => {
+    html += `<tr>
       <td>${d.FECHA||""}</td>
       <td>${d["HORA DE INGRESO"]||""}</td>
       <td>${d.ORIGEN||""}</td>
@@ -196,26 +354,25 @@ function renderTablaListado(datos) {
     </tr>`;
   });
 
-  tablaListado.innerHTML = html;
+  document.getElementById("tablaListado").innerHTML = html;
 
-  paginacion.innerHTML = `
-    <button onclick="cambiarPagina(${paginaActual-1})" ${paginaActual===1?"disabled":""}>◀</button>
-    Página ${paginaActual} de ${totalPaginas||1}
-    <button onclick="cambiarPagina(${paginaActual+1})" ${paginaActual===totalPaginas?"disabled":""}>▶</button>
+  document.getElementById("paginacion").innerHTML = `
+    <button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual === 1 ? "disabled" : ""}>◀ Anterior</button>
+    Página ${paginaActual} de ${totalPaginas || 1}
+    <button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual === totalPaginas ? "disabled" : ""}>Siguiente ▶</button>
   `;
 }
 
-function cambiarPagina(p){
-  paginaActual = p;
-  actualizarSinReset();
+function cambiarPagina(pag) {
+  paginaActual = pag;
+  const f = getFiltrado();
+  renderTablaComuna(f);
+  renderTablaOrigen(f);
+  renderTablaListado(f);
 }
 
-function actualizar(){
+function actualizar() {
   paginaActual = 1;
-  actualizarSinReset();
-}
-
-function actualizarSinReset(){
   const f = getFiltrado();
   renderTablaComuna(f);
   renderTablaOrigen(f);
