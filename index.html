@@ -63,7 +63,6 @@ tr:nth-child(even) { background: #f2f2f2; }
   color: white;
 }
 
-/* tablas compactas y centradas */
 .tabla-chica {
   table-layout: fixed;
   width: 85%;
@@ -110,12 +109,18 @@ tr:nth-child(even) { background: #f2f2f2; }
 <button class="copiar-btn" onclick="copiarTablaImagen('tablaListado')">Copiar listado como imagen</button>
 <table id="tablaListado"></table>
 
+<div id="paginacion" style="text-align:center; margin-top:10px;"></div>
+
 <script>
 
 const URL = "https://docs.google.com/spreadsheets/d/1hbBJExZ_a0fFi8kTyKVNK_sZOy2B0bx2/gviz/tq?tqx=out:csv&gid=2142563319";
 
 let data = [];
 let filtro = { año: null, mes: null, fecha: null };
+
+// 👉 PAGINACIÓN
+let paginaActual = 1;
+const registrosPorPagina = 50;
 
 const mesesNombre = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
@@ -310,7 +315,7 @@ function renderTablaOrigen(datos) {
   document.getElementById("tablaOrigen").innerHTML = html;
 }
 
-// ===== TABLA LISTADO =====
+// ===== LISTADO CON PAGINACIÓN =====
 function renderTablaListado(datos) {
   const fEstado = document.getElementById("fEstado").value;
   const fZona = document.getElementById("fZona").value;
@@ -330,9 +335,13 @@ function renderTablaListado(datos) {
       return fb - fa;
     });
 
+  const totalPaginas = Math.ceil(filtrado.length / registrosPorPagina);
+  const inicio = (paginaActual - 1) * registrosPorPagina;
+  const paginaDatos = filtrado.slice(inicio, inicio + registrosPorPagina);
+
   let html = "<tr><th>FECHA</th><th>HORA</th><th>ORIGEN</th><th>N AVISO</th><th>CALLE</th><th>ALTURA</th><th>INTERSECCIÓN</th><th>COMUNA</th><th>ZONA</th><th>ESTADO</th></tr>";
 
-  filtrado.forEach(d => {
+  paginaDatos.forEach(d => {
     html += `<tr>
       <td>${d.FECHA||""}</td>
       <td>${d["HORA DE INGRESO"]||""}</td>
@@ -348,10 +357,30 @@ function renderTablaListado(datos) {
   });
 
   document.getElementById("tablaListado").innerHTML = html;
+
+  let pagHtml = `
+    <button onclick="cambiarPagina(${paginaActual-1})" ${paginaActual===1?"disabled":""}>◀ Anterior</button>
+    Página ${paginaActual} de ${totalPaginas || 1}
+    <button onclick="cambiarPagina(${paginaActual+1})" ${paginaActual===totalPaginas?"disabled":""}>Siguiente ▶</button>
+  `;
+
+  document.getElementById("paginacion").innerHTML = pagHtml;
 }
 
-// ===== ACTUALIZAR =====
+function cambiarPagina(pag) {
+  paginaActual = pag;
+  actualizarSinReset();
+}
+
 function actualizar() {
+  paginaActual = 1;
+  const f = getFiltrado();
+  renderTablaComuna(f);
+  renderTablaOrigen(f);
+  renderTablaListado(f);
+}
+
+function actualizarSinReset() {
   const f = getFiltrado();
   renderTablaComuna(f);
   renderTablaOrigen(f);
