@@ -63,11 +63,11 @@ tr:nth-child(even) { background: #f2f2f2; }
   color: white;
 }
 
-/* ===== tablas compactas y centradas ===== */
+/* tablas compactas y centradas */
 .tabla-chica {
   table-layout: fixed;
   width: 85%;
-  margin: 0 auto; /* ← centrado */
+  margin: 0 auto;
 }
 
 .tabla-chica th,
@@ -75,7 +75,6 @@ tr:nth-child(even) { background: #f2f2f2; }
   padding: 6px;
   font-size: 14px;
 }
-
 </style>
 </head>
 
@@ -104,6 +103,8 @@ tr:nth-child(even) { background: #f2f2f2; }
   Estado: <select id="fEstado" onchange="actualizar()"></select>
   Zona: <select id="fZona" onchange="actualizar()"></select>
   Comuna: <select id="fComuna" onchange="actualizar()"></select>
+  <br><br>
+  Buscar calle: <input type="text" id="fCalle" oninput="actualizar()" placeholder="Ej: Corrientes">
 </div>
 
 <button class="copiar-btn" onclick="copiarTablaImagen('tablaListado')">Copiar listado como imagen</button>
@@ -260,83 +261,19 @@ async function copiarTablaImagen(id) {
   });
 }
 
-// ===== TABLAS =====
-function renderTablaComuna(datos) {
-  let resumen = {};
-
-  datos.forEach(d => {
-    const c = d.COMUNA || "SIN DATO";
-    const estado = (d.ESTADO || "").toUpperCase();
-
-    if (!resumen[c]) resumen[c] = { i:0, r:0 };
-
-    resumen[c].i++;
-    if (estado.includes("RESUELTO")) resumen[c].r++;
-  });
-
-  let html = "<tr><th>Comuna</th><th>Ingresos</th><th>Resueltos</th><th>Pendientes</th></tr>";
-
-  Object.keys(resumen).sort().forEach(c => {
-    let ing = resumen[c].i;
-    let res = resumen[c].r;
-
-    html += `<tr>
-      <td>${c}</td>
-      <td>${ing}</td>
-      <td>${res}</td>
-      <td>${ing-res}</td>
-    </tr>`;
-  });
-
-  document.getElementById("tablaComuna").innerHTML = html;
-}
-
-function renderTablaOrigen(datos) {
-  let resumen = {};
-
-  datos.forEach(d => {
-    const o = d.ORIGEN || "SIN DATO";
-    if (!resumen[o]) resumen[o]=0;
-    resumen[o]++;
-  });
-
-  let html = "<tr><th>Origen</th><th>Ingresos</th></tr>";
-
-  Object.keys(resumen).sort().forEach(o => {
-    html += `<tr><td>${o}</td><td>${resumen[o]}</td></tr>`;
-  });
-
-  document.getElementById("tablaOrigen").innerHTML = html;
-}
-
-// ===== FILTROS LISTADO =====
-function generarFiltrosListado() {
-  generarSelect("fEstado", "ESTADO");
-  generarSelect("fZona", "ZONA");
-  generarSelect("fComuna", "COMUNA");
-}
-
-function generarSelect(id, campo) {
-  const sel = document.getElementById(id);
-  const valores = [...new Set(data.map(d => d[campo]).filter(Boolean))];
-
-  sel.innerHTML = "<option value=''>Todos</option>";
-  valores.forEach(v => {
-    sel.innerHTML += `<option value="${v}">${v}</option>`;
-  });
-}
-
 // ===== TABLA LISTADO =====
 function renderTablaListado(datos) {
   const fEstado = document.getElementById("fEstado").value;
   const fZona = document.getElementById("fZona").value;
   const fComuna = document.getElementById("fComuna").value;
+  const fCalle = document.getElementById("fCalle").value.toLowerCase();
 
   const filtrado = datos
     .filter(d =>
       (!fEstado || d.ESTADO === fEstado) &&
       (!fZona || d.ZONA === fZona) &&
-      (!fComuna || d.COMUNA === fComuna)
+      (!fComuna || d.COMUNA === fComuna) &&
+      (!fCalle || (d.CALLE || "").toLowerCase().includes(fCalle))
     )
     .sort((a,b) => {
       const fa = new Date(a.FECHA + " " + (a["HORA DE INGRESO"] || "00:00"));
